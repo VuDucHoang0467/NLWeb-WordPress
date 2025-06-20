@@ -1168,3 +1168,114 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+async def load_rss_data(rss_url: str, site_name: str) -> Dict[str, Any]:
+    """
+    Load RSS data from URL and store in vector database
+    
+    Args:
+        rss_url: URL of the RSS feed
+        site_name: Name of the site to associate with the data
+        
+    Returns:
+        Dictionary with result information
+    """
+    try:
+        # Download RSS content
+        async with aiohttp.ClientSession() as session:
+            async with session.get(rss_url) as response:
+                if response.status != 200:
+                    raise Exception(f"Failed to fetch RSS: HTTP {response.status}")
+                rss_content = await response.text()
+        
+        # Convert RSS to schema.org format using existing module
+        json_data = rss2schema.convert_rss_to_schema(rss_content, site_name)
+        
+        if not json_data:
+            raise Exception("No data converted from RSS feed")
+        
+        # Write to temporary JSON file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+            for item in json_data:
+                json.dump(item, temp_file)
+                temp_file.write('\n')
+            temp_file_path = temp_file.name
+        
+        try:
+            # Use existing load_json_data function
+            result = await load_json_data_to_db(temp_file_path, site_name)
+            return {
+                'success': True,
+                'count': len(json_data),
+                'message': f"Successfully loaded {len(json_data)} items from RSS feed"
+            }
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+                
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+async def load_json_data_to_db(file_path: str, site_name: str) -> Dict[str, Any]:
+    """
+    Load JSON data from file to vector database (async version)
+    
+    Args:
+        file_path: Path to JSON file
+        site_name: Site name to associate with data
+        
+    Returns:
+        Result dictionary
+    """
+    try:
+        # Get vector database client
+        client = get_vector_db_client()
+        
+        # Read and process JSON data
+        documents = []
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line_num, line in enumerate(file, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                try:
+                    url, json_data = process_line(line)
+                    docs = prepare_documents_from_json(url, json_data, site_name)
+                    documents.extend(docs)
+                except Exception as e:
+                    print(f"Error processing line {line_num}: {e}")
+                    continue
+        
+        if not documents:
+            raise Exception("No valid documents found in file")
+        
+        # Generate embeddings for documents
+        print(f"Generating embeddings for {len(documents)} documents...")
+        embeddings = await batch_get_embeddings([doc['text'] for doc in documents])
+        
+        # Add embeddings to documents
+        for doc, embedding in zip(documents, embeddings):
+            doc['embedding'] = embedding
+        
+        # Store in vector database
+        print(f"Storing {len(documents)} documents in vector database...")
+        await client.add_documents(documents)
+        
+        return {
+            'success': True,
+            'count': len(documents),
+            'message': f"Successfully loaded {len(documents)} documents"
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }

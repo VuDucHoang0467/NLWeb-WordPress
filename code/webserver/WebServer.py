@@ -350,6 +350,16 @@ async def fulfill_request(method, path, headers, query_params, body, send_respon
         elif (path.find("html/") != -1) or path.find("static/") != -1 or (path.find("png") != -1):
             await send_static_file(path, send_response, send_chunk)
             return
+        
+        # Data loading endpoints for Railway deployment
+        elif path.startswith("/admin/load-data") or path.startswith("/api/load-rss"):
+            from webserver.data_loader import handle_data_load_request
+            result = await handle_data_load_request(path, query_params)
+            if result:
+                await send_response(result['status'], result['headers'])
+                await send_chunk(result['body'], end_response=True)
+                return
+        
         elif (path.find("who") != -1):
             retval =  await WhoHandler(query_params, None).runQuery()
             await send_response(200, {'Content-Type': 'application/json'})
