@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example: NLWeb Widget Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .code-block {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .highlight {
+            background: #ffffcc;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Hướng dẫn tích hợp NLWeb Widget vào WordPress</h1>
+    
+    <div class="section">
+        <h2>📋 Bước 1: Thêm vào Header hoặc Footer WordPress</h2>
+        <p>Thêm đoạn code sau vào file <strong>header.php</strong> hoặc <strong>footer.php</strong> của theme WordPress:</p>
+        
+        <div class="code-block">
+<pre>&lt;!-- Cấu hình NLWeb Widget --&gt;
+&lt;script&gt;
+window.NLWEB_CONFIG = {
+    apiBaseUrl: '<span class="highlight">https://your-deployed-app.railway.app</span>', // ⚠️ Thay bằng URL thực tế
+    title: 'Trợ lý AI',
+    welcomeMessage: '👋 Xin chào! Tôi có thể giúp gì cho bạn hôm nay?'
+};
+&lt;/script&gt;
+
+&lt;!-- Load NLWeb Widget --&gt;
+&lt;script src="<span class="highlight">https://your-deployed-app.railway.app</span>/static/widget.js"&gt;&lt;/script&gt;</pre>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🎯 Bước 2: Sử dụng WordPress Plugin (Khuyến nghị)</h2>
+        <p>Tạo plugin WordPress để dễ quản lý:</p>
+        
+        <h3>Tạo file: wp-content/plugins/nlweb-widget/nlweb-widget.php</h3>
+        <div class="code-block">
+<pre>&lt;?php
+/**
+ * Plugin Name: NLWeb Chat Widget
+ * Description: Tích hợp chat widget NLWeb vào WordPress
+ * Version: 1.0
+ * Author: Your Name
+ */
+
+// Prevent direct access
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class NLWebWidget {
+    
+    public function __construct() {
+        add_action('wp_footer', array($this, 'add_widget_script'));
+        add_action('admin_menu', array($this, 'add_admin_menu'));
+        add_action('admin_init', array($this, 'init_settings'));
+    }
+    
+    public function add_widget_script() {
+        $api_url = get_option('nlweb_api_url', 'https://your-app.railway.app');
+        $title = get_option('nlweb_title', 'Trợ lý AI');
+        $welcome = get_option('nlweb_welcome', '👋 Xin chào! Tôi có thể giúp gì cho bạn?');
+        
+        echo "&lt;script&gt;
+        window.NLWEB_CONFIG = {
+            apiBaseUrl: '{$api_url}',
+            title: '{$title}',
+            welcomeMessage: '{$welcome}'
+        };
+        &lt;/script&gt;";
+        
+        echo "&lt;script src='{$api_url}/static/widget.js'&gt;&lt;/script&gt;";
+    }
+    
+    public function add_admin_menu() {
+        add_options_page(
+            'NLWeb Widget Settings',
+            'NLWeb Widget', 
+            'manage_options',
+            'nlweb-widget',
+            array($this, 'admin_page')
+        );
+    }
+    
+    public function init_settings() {
+        register_setting('nlweb_settings', 'nlweb_api_url');
+        register_setting('nlweb_settings', 'nlweb_title');  
+        register_setting('nlweb_settings', 'nlweb_welcome');
+    }
+    
+    public function admin_page() {
+        ?&gt;
+        &lt;div class="wrap"&gt;
+            &lt;h1&gt;NLWeb Widget Settings&lt;/h1&gt;
+            &lt;form method="post" action="options.php"&gt;
+                &lt;?php settings_fields('nlweb_settings'); ?&gt;
+                &lt;table class="form-table"&gt;
+                    &lt;tr&gt;
+                        &lt;th scope="row"&gt;API URL&lt;/th&gt;
+                        &lt;td&gt;&lt;input type="url" name="nlweb_api_url" value="&lt;?php echo esc_attr(get_option('nlweb_api_url')); ?&gt;" class="regular-text" /&gt;&lt;/td&gt;
+                    &lt;/tr&gt;
+                    &lt;tr&gt;
+                        &lt;th scope="row"&gt;Widget Title&lt;/th&gt;
+                        &lt;td&gt;&lt;input type="text" name="nlweb_title" value="&lt;?php echo esc_attr(get_option('nlweb_title')); ?&gt;" class="regular-text" /&gt;&lt;/td&gt;
+                    &lt;/tr&gt;
+                    &lt;tr&gt;
+                        &lt;th scope="row"&gt;Welcome Message&lt;/th&gt;
+                        &lt;td&gt;&lt;textarea name="nlweb_welcome" class="regular-text"&gt;&lt;?php echo esc_textarea(get_option('nlweb_welcome')); ?&gt;&lt;/textarea&gt;&lt;/td&gt;
+                    &lt;/tr&gt;
+                &lt;/table&gt;
+                &lt;?php submit_button(); ?&gt;
+            &lt;/form&gt;
+        &lt;/div&gt;
+        &lt;?php
+    }
+}
+
+new NLWebWidget();
+?&gt;</pre>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>⚙️ Bước 3: Kích hoạt Plugin</h2>
+        <ol>
+            <li>Tải file plugin lên thư mục <code>wp-content/plugins/nlweb-widget/</code></li>
+            <li>Vào WordPress Admin → Plugins → Activate "NLWeb Chat Widget"</li>
+            <li>Vào Settings → NLWeb Widget để cấu hình URL API</li>
+        </ol>
+    </div>
+
+    <div class="section">
+        <h2>🧪 Bước 4: Test Widget</h2>
+        <p>Sau khi setup xong:</p>
+        <ul>
+            <li>Truy cập trang web WordPress</li>
+            <li>Kiểm tra icon chat ở góc phải dưới</li>
+            <li>Click để mở widget và test chat</li>
+            <li>Kiểm tra Console browser nếu có lỗi</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>🚨 Troubleshooting</h2>
+        <h3>Widget không hiển thị:</h3>
+        <ul>
+            <li>Kiểm tra URL API có đúng không</li>
+            <li>Kiểm tra server NLWeb có online không</li>
+            <li>Xem Console browser để check lỗi JavaScript</li>
+        </ul>
+        
+        <h3>Lỗi CORS:</h3>
+        <ul>
+            <li>Server NLWeb đã có cấu hình CORS sẵn</li>
+            <li>Nếu vẫn lỗi, kiểm tra domain WordPress có được whitelist</li>
+        </ul>
+        
+        <h3>Chat không hoạt động:</h3>
+        <ul>
+            <li>Kiểm tra OPENAI_API_KEY có được set đúng</li>
+            <li>Kiểm tra logs server để debug</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>🔗 API Testing</h2>
+        <p>Test API trực tiếp bằng URL:</p>
+        <div class="code-block">
+            <code>https://your-app.railway.app/ask?query=hello&site=all&generate_mode=list</code>
+        </div>
+    </div>
+
+    <!-- Để demo, bạn có thể uncomment dòng dưới để test widget ngay trên trang này -->
+    <!--
+    <script>
+    window.NLWEB_CONFIG = {
+        apiBaseUrl: 'http://localhost:8000', // Change to your deployed URL
+        title: 'Demo Assistant',
+        welcomeMessage: '👋 This is a demo widget!'
+    };
+    </script>
+    <script src="http://localhost:8000/static/widget.js"></script>
+    -->
+
+</body>
+</html>

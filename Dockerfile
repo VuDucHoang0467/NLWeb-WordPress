@@ -1,0 +1,32 @@
+# Use Python 3.12 slim image (more secure)
+FROM python:3.12-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY code/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project
+COPY . /app/
+
+# Create necessary directories
+RUN mkdir -p /app/data/db /app/data/json /app/data/json_with_embeddings
+
+# Set environment variables
+ENV PYTHONPATH=/app/code
+ENV PORT=8000
+
+# Expose port
+EXPOSE 8000
+
+# Change to code directory and run the app
+WORKDIR /app/code
+CMD ["python", "app-file.py"]

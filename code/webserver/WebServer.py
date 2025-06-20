@@ -105,11 +105,11 @@ async def handle_client(reader, writer, fulfill_request):
                 status_line = f"HTTP/1.1 {status_code}\r\n"
                 writer.write(status_line.encode('utf-8'))
                 
-                # Add CORS headers if enabled
-                if CONFIG.server.enable_cors and 'Origin' in headers:
-                    response_headers['Access-Control-Allow-Origin'] = '*'
-                    response_headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-                    response_headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                # Add CORS headers - always enable for widget support
+                response_headers['Access-Control-Allow-Origin'] = '*'
+                response_headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+                response_headers['Access-Control-Allow-Headers'] = 'Content-Type, Cache-Control'
+                response_headers['Access-Control-Expose-Headers'] = 'Content-Type'
                 
                 # Send headers
                 for header_name, header_value in response_headers.items():
@@ -317,6 +317,17 @@ async def fulfill_request(method, path, headers, query_params, body, send_respon
         send_chunk (callable): Function to send response body chunks
     '''
     try:
+        # Handle OPTIONS requests for CORS preflight
+        if method == "OPTIONS":
+            await send_response(200, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Cache-Control',
+                'Access-Control-Max-Age': '86400'
+            })
+            await send_chunk("", end_response=True)
+            return
+
         streaming = True
         generate_mode = "none"
         if ("streaming" in query_params):
@@ -325,7 +336,7 @@ async def fulfill_request(method, path, headers, query_params, body, send_respon
 
         if ("generate_mode" in query_params):
             generate_mode = get_param(query_params, "generate_mode", str, "none")
-           
+
         if path == "/" or path == "":
             # Serve the home page as /static/index.html
             # First check if the file exists

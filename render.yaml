@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: nlweb-app
+    env: python
+    plan: starter
+    buildCommand: pip install -r code/requirements.txt
+    startCommand: cd code && python app-file.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.11.0
