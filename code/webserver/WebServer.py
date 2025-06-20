@@ -350,9 +350,8 @@ async def fulfill_request(method, path, headers, query_params, body, send_respon
         elif (path.find("html/") != -1) or path.find("static/") != -1 or (path.find("png") != -1):
             await send_static_file(path, send_response, send_chunk)
             return
-        
-        # Data loading endpoints for Railway deployment
-        elif path.startswith("/admin/load-data") or path.startswith("/api/load-rss"):
+          # Data loading endpoints for Railway deployment
+        elif path.startswith("/admin/") or path.startswith("/api/load-"):
             from webserver.data_loader import handle_data_load_request
             result = await handle_data_load_request(path, query_params)
             if result:

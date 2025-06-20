@@ -15,6 +15,10 @@ async def handle_data_load_request(request_path, query_params):
         # Serve the data loading interface
         return await serve_data_load_interface()
     
+    elif request_path == "/admin/status":
+        # Handle admin status check
+        return await handle_admin_status(query_params)
+    
     elif request_path == "/api/load-rss":
         # Handle RSS loading
         return await handle_rss_load(query_params)
@@ -40,11 +44,17 @@ async def serve_data_load_interface():
             .error { background: #f8d7da; color: #721c24; }
             .success { background: #d4edda; color: #155724; }
         </style>
-    </head>
-    <body>
+    </head>    <body>
         <h1>🔄 NLWeb Data Loader</h1>
         <p>Load RSS data into your Qdrant Cloud database</p>
         
+        <!-- Status Section -->
+        <div class="form-group">
+            <button type="button" onclick="checkStatus()">🔍 Check Database Status</button>
+        </div>
+        <div id="statusResult"></div>
+        
+        <!-- Data Loading Form -->
         <form id="loadForm">
             <div class="form-group">
                 <label for="rssUrl">RSS URL:</label>
@@ -62,8 +72,35 @@ async def serve_data_load_interface():
         </form>
         
         <div id="result"></div>
+          <script>
+        // Check database status
+        async function checkStatus() {
+            const statusDiv = document.getElementById('statusResult');
+            statusDiv.innerHTML = '<div class="result">⏳ Checking database status...</div>';
+            
+            try {
+                const response = await fetch('/admin/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const info = data.data;
+                    statusDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ Database Status: ${info.database}<br>
+                            📊 Type: ${info.type}<br>
+                            📁 Collections: ${info.collections.length || 0}<br>
+                            📄 Total Documents: ${info.total_documents || 'N/A'}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<div class="result error">❌ Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="result error">❌ Network error: ${error.message}</div>`;
+            }
+        }
         
-        <script>
+        // Load RSS data
         document.getElementById('loadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -125,6 +162,41 @@ async def handle_rss_load(query_params):
                 'count': result.get('count', 0),
                 'message': f'Successfully loaded data from {site_name}'
             })
+        }
+        
+    except Exception as e:
+        return {
+            'status': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'success': False, 'error': str(e)})
+        }
+
+async def handle_admin_status(query_params):
+    """Handle admin status check"""
+    try:
+        # Check database connection
+        from retrieval.retriever import get_vector_db_client
+        client = get_vector_db_client()
+        
+        # Get database info
+        status_info = {
+            'database': 'connected',
+            'type': 'qdrant',
+            'collections': [],
+            'total_documents': 0
+        }
+        
+        try:
+            # Try to get collections info
+            collections_info = await client.get_collections_info()
+            status_info['collections'] = collections_info
+        except Exception as e:
+            status_info['database'] = f'error: {str(e)}'
+        
+        return {
+            'status': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'success': True, 'data': status_info})
         }
         
     except Exception as e:
