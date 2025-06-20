@@ -27,6 +27,6 @@ ENV PORT=8000
 # Expose port
 EXPOSE 8000
 
-# Change to code directory and run the app
-WORKDIR /app/code
-CMD ["python", "app-file.py"]
+# Stay in /app and run the start script
+WORKDIR /app
+CMD ["bash", "start.sh"]

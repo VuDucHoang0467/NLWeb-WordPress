@@ -1,0 +1,8 @@
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.start]
+cmd = "cd code && python app-file.py"
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"

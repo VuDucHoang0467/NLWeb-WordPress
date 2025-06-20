@@ -1,3 +1,3 @@
 #!/bin/bash
 cd code
-python main.py
+python app-file.py
